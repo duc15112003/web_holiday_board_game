@@ -1,0 +1,50 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          # Pass repository info to the script
+          envs: GITHUB_REPOSITORY
+          script: |
+            # Cấu hình đường dẫn dự án trên server
+            # LƯU Ý: Thay đổi đường dẫn này nếu cần
+            PROJECT_ROOT="/home/${{ secrets.USERNAME }}/app/wheel-frontend"
+            
+            # Lấy URL repo (dùng HTTPS với token hoặc SSH key nếu setup sẵn)
+            # Ở đây dùng HTTPS công khai cho đơn giản, nếu repo private cần setup thêm
+            REPO_URL="https://github.com/duc15112003/web_holiday_board_game.git"
+
+            # Kiểm tra xem thư mục dự án đã tồn tại chưa
+            if [ ! -d "$PROJECT_ROOT/.git" ]; then
+              echo "Project not found. Cloning from $REPO_URL..."
+              mkdir -p "$PROJECT_ROOT"
+              git clone "$REPO_URL" "$PROJECT_ROOT"
+            else
+              echo "Project exists. Pulling latest code..."
+              cd "$PROJECT_ROOT"
+              git pull origin main
+            fi
+
+            # Di chuyển vào thư mục frontend để chạy docker compose
+            cd "$PROJECT_ROOT/frontend"
+
+            # Rebuild and restart containers
+            # Sử dụng -p (project name) để đảm bảo không ảnh hưởng dự án khác
+            docker compose -p wheel-production down
+            docker compose -p wheel-production up -d --build
