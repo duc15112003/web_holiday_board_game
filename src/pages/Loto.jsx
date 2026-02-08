@@ -435,15 +435,7 @@ export default function Loto() {
                 </div>
             </main>
 
-            {/* Debug Info */}
-            <div className="fixed bottom-0 right-0 bg-black text-white p-2 text-xs opacity-50 hover:opacity-100">
-                <p>Status: {gameState}</p>
-                <p>Me: {socket?.id || 'Connecting...'}</p>
-                <p>Host: {hostId}</p>
-                <p>IsHost: {isHost ? 'Yes' : 'No'}</p>
-                <p>Players: {players.length}</p>
-                <p>Ticket: {myTicket ? 'Yes' : 'No'}</p>
-            </div>
+
         </div>
     );
 

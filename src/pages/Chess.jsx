@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { chessApi } from '../mock-api/chess-server';
 import { socketService } from '../services/socket';
 import { Chess } from 'chess.js';
@@ -11,6 +12,8 @@ const PIECES = {
 
 export default function ChessGame() {
     const navigate = useNavigate();
+    const { user, loading } = useAuth();
+    const [players, setPlayers] = useState({ w: null, b: null });
 
     // Game Mode State: 'menu', 'local', 'online'
     const [mode, setMode] = useState('menu');
@@ -61,7 +64,8 @@ export default function ChessGame() {
                 console.log('Joined room event received:', data);
                 setPlayerColor(data.color);
                 playerColorRef.current = data.color; // Update ref immediately for safety
-                setStatusMsg(`Room ${data.roomId}: ${data.color === 'w' ? 'White' : 'Black'}`);
+                setPlayers(data.players || { w: null, b: null });
+                setStatusMsg(`Room ${data.roomId}`);
 
                 // Sync game state
                 const newChess = new Chess(data.fen);
@@ -99,7 +103,7 @@ export default function ChessGame() {
             });
 
             socket.on('player_update', (data) => {
-                setStatusMsg(prev => prev.split(' | ')[0] + ` | Players: ${data.playerCount}`);
+                setPlayers(data.players || { w: null, b: null });
             });
 
             socket.on('game_reset', (data) => {
@@ -166,14 +170,14 @@ export default function ChessGame() {
 
     // Handle Join Request
     useEffect(() => {
-        if (mode === 'online' && joinRequest) {
+        if (mode === 'online' && joinRequest && !loading) {
             const socket = socketService.connect(); // Get instance
 
             const performJoin = () => {
                 console.log("Emitting join_room for", joinRequest.roomId);
                 socket.emit('join_room', {
                     roomId: joinRequest.roomId,
-                    username: 'Player_' + Math.floor(Math.random() * 1000)
+                    username: user?.username || 'Guest_' + Math.floor(Math.random() * 1000)
                 });
                 setJoinRequest(null);
             };
@@ -189,7 +193,7 @@ export default function ChessGame() {
                 socket.off('connect', performJoin);
             };
         }
-    }, [joinRequest, mode]);
+    }, [joinRequest, mode, user, loading]);
 
     const loadLocalGame = () => {
         const state = chessApi.getGame();
@@ -453,7 +457,7 @@ export default function ChessGame() {
             {/* Status & Tags */}
             <div className="bg-gray-700 px-8 py-3 rounded-full shadow-lg mb-6 flex items-center gap-6 border border-gray-600">
                 <div className={`flex items-center gap-2 ${game.turn === 'w' ? 'font-bold text-white' : 'text-gray-500'}`}>
-                    <span className="text-2xl">♔</span> White
+                    <span className="text-2xl">♔</span> {players.w?.username || (mode === 'online' && playerColor === 'w' ? user?.username : 'Waiting...')}
                     {mode === 'online' && playerColor === 'w' && <span className="text-xs bg-blue-600 px-2 py-0.5 rounded text-white font-bold shadow">YOU</span>}
                     {gameOverStatus && (
                         (gameOverStatus.winner === 'w')
@@ -465,7 +469,7 @@ export default function ChessGame() {
                 </div>
                 <div className="text-gray-500">|</div>
                 <div className={`flex items-center gap-2 ${game.turn === 'b' ? 'font-bold text-white' : 'text-gray-500'}`}>
-                    <span className="text-2xl">♚</span> Black
+                    <span className="text-2xl">♚</span> {players.b?.username || (mode === 'online' && playerColor === 'b' ? user?.username : 'Waiting...')}
                     {mode === 'online' && playerColor === 'b' && <span className="text-xs bg-blue-600 px-2 py-0.5 rounded text-white font-bold shadow">YOU</span>}
                     {gameOverStatus && (
                         (gameOverStatus.winner === 'b')
@@ -507,12 +511,13 @@ export default function ChessGame() {
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm">
                     <div className="bg-gray-800 p-8 rounded-2xl border-2 border-yellow-400 shadow-2xl text-center transform scale-110">
                         <h2 className={`text-5xl font-black mb-2 ${gameOverStatus.winner === 'draw' ? 'text-gray-300' :
-                                (mode === 'online' && gameOverStatus.winner !== playerColor) ? 'text-red-500' : 'text-yellow-400'
+                            (mode === 'online' && gameOverStatus.winner !== playerColor) ? 'text-red-500' : 'text-yellow-400'
                             }`}>
                             {gameOverStatus.winner === 'draw' && "DRAW"}
                             {(mode === 'local') && (gameOverStatus.winner === 'w' ? "WHITE WINS!" : "BLACK WINS!")}
                             {(mode === 'online') && (
-                                gameOverStatus.winner === playerColor ? "VICTORY!" : "DEFEAT"
+                                gameOverStatus.winner === playerColor ? "VICTORY!" :
+                                    (gameOverStatus.winner === 'w' ? `${players.w?.username} WINS!` : `${players.b?.username} WINS!`)
                             )}
                         </h2>
                         <p className="text-xl text-gray-300 mb-8 font-mono">{gameOverStatus.reason}</p>

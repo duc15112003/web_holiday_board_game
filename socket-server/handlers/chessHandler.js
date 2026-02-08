@@ -25,10 +25,10 @@ function registerChessHandlers(io, socket, rooms) {
         // Assign color
         let color = null;
         if (!room.players.w) {
-            room.players.w = socket.id;
+            room.players.w = { id: socket.id, username };
             color = 'w';
         } else if (!room.players.b) {
-            room.players.b = socket.id;
+            room.players.b = { id: socket.id, username };
             color = 'b';
         } else {
             color = 's'; // Spectator
@@ -42,11 +42,13 @@ function registerChessHandlers(io, socket, rooms) {
             color,
             fen: room.fen,
             turn: room.turn,
+            players: room.players,
             playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
         });
 
         // Notify room
         io.to(roomId).emit('player_update', {
+            players: room.players,
             playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
         });
     }
@@ -114,16 +116,17 @@ function registerChessHandlers(io, socket, rooms) {
     // Handle disconnect
     function handleChessDisconnect(roomId, room) {
         let found = false;
-        if (room.players.w === socket.id) {
+        if (room.players.w?.id === socket.id) {
             room.players.w = null;
             found = true;
-        } else if (room.players.b === socket.id) {
+        } else if (room.players.b?.id === socket.id) {
             room.players.b = null;
             found = true;
         }
 
         if (found) {
             io.to(roomId).emit('player_update', {
+                players: room.players,
                 playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
             });
 

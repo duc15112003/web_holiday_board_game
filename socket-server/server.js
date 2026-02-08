@@ -8,6 +8,7 @@ const cors = require('cors');
 const { registerLotoHandlers } = require('./handlers/lotoHandler');
 const { registerChessHandlers } = require('./handlers/chessHandler');
 const { registerUnoHandlers } = require('./handlers/unoHandler');
+const { registerCaroHandlers } = require('./handlers/caroHandler');
 
 const app = express();
 app.use(cors());
@@ -37,6 +38,7 @@ io.on('connection', (socket) => {
     const lotoHandlers = registerLotoHandlers(io, socket, rooms);
     const chessHandlers = registerChessHandlers(io, socket, rooms);
     const unoHandlers = registerUnoHandlers(io, socket, rooms);
+    const caroHandlers = registerCaroHandlers(io, socket, rooms);
 
     // Main join room handler
     socket.on('join_room', ({ roomId, username, gameType, mode }) => {
@@ -47,6 +49,8 @@ io.on('connection', (socket) => {
             lotoHandlers.handleLotoJoin(roomId, username);
         } else if (gameType === 'uno') {
             unoHandlers.handleUnoJoin(roomId, username, mode);
+        } else if (gameType === 'caro') {
+            caroHandlers.handleCaroJoin(roomId, username);
         } else {
             chessHandlers.handleChessJoin(roomId, username);
         }
@@ -61,6 +65,8 @@ io.on('connection', (socket) => {
                 if (lotoHandlers.handleLotoDisconnect(roomId, room)) break;
             } else if (room.type === 'uno') {
                 if (unoHandlers.handleUnoDisconnect(roomId, room)) break;
+            } else if (room.type === 'caro') {
+                if (caroHandlers.handleCaroDisconnect(roomId, room)) break;
             } else {
                 if (chessHandlers.handleChessDisconnect(roomId, room)) break;
             }
