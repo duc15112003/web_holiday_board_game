@@ -4,167 +4,65 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+// Import handlers
+const { registerLotoHandlers } = require('./handlers/lotoHandler');
+const { registerChessHandlers } = require('./handlers/chessHandler');
+const { registerUnoHandlers } = require('./handlers/unoHandler');
+
 const app = express();
 app.use(cors());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', rooms: rooms.size });
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "*", // Use env var or allow all
+        origin: process.env.CORS_ORIGIN || "*",
         methods: ["GET", "POST"]
-    }
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
-// Game Rooms State
-// { roomId: { fen: string, turn: 'w'|'b', players: { w: socketId, b: socketId } } }
+// Shared game rooms state
 const rooms = new Map();
 
 io.on('connection', (socket) => {
+    console.log(`[CONNECTION] ${socket.id}`);
 
-    // Join Room
-    socket.on('join_room', ({ roomId, username }) => {
+    // Register game handlers
+    const lotoHandlers = registerLotoHandlers(io, socket, rooms);
+    const chessHandlers = registerChessHandlers(io, socket, rooms);
+    const unoHandlers = registerUnoHandlers(io, socket, rooms);
+
+    // Main join room handler
+    socket.on('join_room', ({ roomId, username, gameType, mode }) => {
+        console.log(`[JOIN] ${socket.id} -> ${roomId} (${gameType})`);
         socket.join(roomId);
 
-        let room = rooms.get(roomId);
-        if (!room) {
-            room = {
-                fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-                turn: 'w',
-                players: {}
-            };
-            rooms.set(roomId, room);
-        }
-
-        // Assign color if available
-        let color = null;
-        if (!room.players.w) {
-            room.players.w = socket.id;
-            color = 'w';
-        } else if (!room.players.b) {
-            room.players.b = socket.id;
-            color = 'b';
+        if (gameType === 'loto') {
+            lotoHandlers.handleLotoJoin(roomId, username);
+        } else if (gameType === 'uno') {
+            unoHandlers.handleUnoJoin(roomId, username, mode);
         } else {
-            // Spectator
-            color = 's';
-        }
-
-        // Notify user of their role and current state
-        socket.emit('room_joined', {
-            roomId,
-            color,
-            fen: room.fen,
-            turn: room.turn,
-            playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
-        });
-
-        // Notify room
-        io.to(roomId).emit('player_update', {
-            playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
-        });
-    });
-
-    // Make Move
-    socket.on('make_move', ({ roomId, move, fen, turn }) => {
-        const room = rooms.get(roomId);
-        if (room) {
-            room.fen = fen;
-            room.turn = turn;
-            // Record move for undo (simplified history)
-            if (!room.history) room.history = [];
-            room.history.push({ move, fen, turn }); // Need previous fen actually
-
-            socket.to(roomId).emit('game_state_update', { move, fen, turn });
+            chessHandlers.handleChessJoin(roomId, username);
         }
     });
 
-    // Game Controls
-    socket.on('request_rematch', ({ roomId }) => {
-        const roomSize = io.sockets.adapter.rooms.get(roomId)?.size || 0;
-
-        if (roomSize <= 1) {
-            // Auto-accept if opponent left
-            const room = rooms.get(roomId);
-            if (room) {
-                room.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-                room.turn = 'w';
-                room.history = [];
-                io.to(roomId).emit('game_reset', {
-                    fen: room.fen,
-                    turn: room.turn
-                });
-            }
-        } else {
-            // Ask for consent if opponent is present
-            socket.to(roomId).emit('rematch_requested');
-        }
-    });
-
-    socket.on('respond_rematch', ({ roomId, accepted }) => {
-        if (accepted) {
-            const room = rooms.get(roomId);
-            if (room) {
-                room.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-                room.turn = 'w';
-                room.history = [];
-                io.to(roomId).emit('game_reset', {
-                    fen: room.fen,
-                    turn: room.turn
-                });
-            }
-        } else {
-            socket.to(roomId).emit('rematch_rejected');
-        }
-    });
-
-    socket.on('resign', ({ roomId }) => {
-        // Sender loses. Opponent wins.
-        // We can identify winner by "not socket.id", but easier to just tell room "Opponent Resigned"
-        // Or send specific game_over event
-        socket.to(roomId).emit('game_over', { reason: 'opponent_resigned', winner: 'you' }); // To opponent
-        socket.emit('game_over', { reason: 'resignation', winner: 'opponent' }); // To self
-    });
-
-    socket.on('offer_draw', ({ roomId }) => {
-        socket.to(roomId).emit('draw_offered');
-    });
-
-    socket.on('respond_draw', ({ roomId, accepted }) => {
-        if (accepted) {
-            io.to(roomId).emit('game_over', { reason: 'draw_agreed' });
-        } else {
-            socket.to(roomId).emit('draw_rejected');
-        }
-    });
-
+    // Disconnect handler
     socket.on('disconnect', () => {
+        console.log(`[DISCONNECT] ${socket.id}`);
 
-
-        // Find room user was in
         for (const [roomId, room] of rooms.entries()) {
-            let found = false;
-
-            if (room.players.w === socket.id) {
-                room.players.w = null;
-                found = true;
-            } else if (room.players.b === socket.id) {
-                room.players.b = null;
-                found = true;
-            }
-
-            // Note: Socket.IO automatically leaves the room, so adapter.rooms size updates
-            // But we need to update our internal state too (above)
-
-            if (found) {
-                // Notify remaining players
-                io.to(roomId).emit('player_update', {
-                    playerCount: io.sockets.adapter.rooms.get(roomId)?.size || 0
-                });
-
-                // Cleanup empty rooms (optional but good)
-                if ((!io.sockets.adapter.rooms.get(roomId)?.size) || (io.sockets.adapter.rooms.get(roomId)?.size === 0)) {
-                    rooms.delete(roomId);
-                }
-                break; // User usually in 1 room
+            if (room.type === 'loto') {
+                if (lotoHandlers.handleLotoDisconnect(roomId, room)) break;
+            } else if (room.type === 'uno') {
+                if (unoHandlers.handleUnoDisconnect(roomId, room)) break;
+            } else {
+                if (chessHandlers.handleChessDisconnect(roomId, room)) break;
             }
         }
     });
@@ -172,5 +70,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`Socket server running on port ${PORT}`);
+    console.log(`🚀 Socket server running on port ${PORT}`);
 });

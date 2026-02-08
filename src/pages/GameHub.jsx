@@ -30,6 +30,24 @@ const GAMES = [
         active: true
     },
     {
+        id: 'loto',
+        name: 'Lô Tô',
+        icon: '🔢',
+        description: 'Trò chơi dân gian, dò số trúng thưởng vui nhộn.',
+        path: '/games/loto',
+        color: 'from-green-500 to-teal-500',
+        active: true
+    },
+    {
+        id: 'uno',
+        name: 'UNO',
+        icon: '🃏',
+        description: 'Bài UNO kinh điển + Chế độ Flip đặc biệt!',
+        path: '/games/uno',
+        color: 'from-red-500 via-yellow-500 to-blue-500',
+        active: true
+    },
+    {
         id: 'xiangqi',
         name: 'Cờ Tướng',
         icon: '🧓',
