@@ -24,7 +24,7 @@ jobs:
           script: |
             # Cấu hình đường dẫn dự án trên server
             # LƯU Ý: Thay đổi đường dẫn này nếu cần
-            PROJECT_ROOT="/home/${{ secrets.USERNAME }}/app/wheel-frontend"
+            PROJECT_ROOT="app/wheel-frontend"
             
             # Lấy URL repo (dùng HTTPS với token hoặc SSH key nếu setup sẵn)
             # Ở đây dùng HTTPS công khai cho đơn giản, nếu repo private cần setup thêm
