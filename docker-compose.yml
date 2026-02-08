@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  socket-server:
+    build:
+      context: ./socket-server
+      dockerfile: Dockerfile
+    container_name: wheel-socket-server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - CORS_ORIGIN=*
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wheel-frontend
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - socket-server
