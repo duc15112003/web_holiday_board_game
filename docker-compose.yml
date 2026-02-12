@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile
     container_name: wheel-frontend
     ports:
-      - "80:80"
+      - "81:81"
     restart: always
     depends_on:
       - socket-server
