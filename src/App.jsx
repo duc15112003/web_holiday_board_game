@@ -7,6 +7,8 @@ import Caro from './pages/Caro';
 import ChessGame from './pages/Chess';
 import Loto from './pages/Loto';
 import Uno from './pages/Uno';
+import Pacman from './pages/Pacman';
+import Xiangqi from './pages/Xiangqi';
 import './App.css';
 
 function App() {
@@ -24,7 +26,8 @@ function App() {
             <Route path="/games/chess" element={<ChessGame />} />
             <Route path="/games/loto" element={<Loto />} />
             <Route path="/games/uno" element={<Uno />} />
-            <Route path="/games/xiangqi" element={<div className="p-10 text-center">Xiangqi Coming Soon</div>} />
+            <Route path="/games/pacman" element={<Pacman />} />
+            <Route path="/games/xiangqi" element={<Xiangqi />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" />} />

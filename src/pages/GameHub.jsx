@@ -48,13 +48,22 @@ const GAMES = [
         active: true
     },
     {
+        id: 'pacman',
+        name: 'Pacman',
+        icon: '🕹️',
+        description: 'Ăn hết hạt, tránh ma và ghi điểm cao nhất!',
+        path: '/games/pacman',
+        color: 'from-yellow-400 to-orange-500',
+        active: true
+    },
+    {
         id: 'xiangqi',
         name: 'Cờ Tướng',
         icon: '🧓',
-        description: 'Trận chiến lịch sử bên bờ sông Sở Hà Hán Giới. (Sắp ra mắt)',
+        description: 'Trận chiến lịch sử bên bờ sông Sở Hà Hán Giới. Đấu với AI.',
         path: '/games/xiangqi',
         color: 'from-orange-600 to-red-700',
-        active: false
+        active: true
     }
 ];
 

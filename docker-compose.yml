@@ -5,7 +5,6 @@ services:
     build:
       context: ./socket-server
       dockerfile: Dockerfile
-    container_name: wheel-socket-server
     ports:
       - "3001:3001"
     environment:
@@ -17,7 +16,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: wheel-frontend
     ports:
       - "81:80"
     restart: always
