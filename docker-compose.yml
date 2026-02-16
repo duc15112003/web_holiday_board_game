@@ -8,6 +8,8 @@ services:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - lucky-net
     restart: always
 
   mongo-express:
@@ -21,6 +23,8 @@ services:
       - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS:-pass}
     depends_on:
       - mongo
+    networks:
+      - lucky-net
     restart: always
 
   socket-server:
@@ -34,6 +38,8 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/lucky_spin_db}
     restart: always
+    networks:
+      - lucky-net
     depends_on:
       - mongo
 
@@ -46,9 +52,15 @@ services:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
     ports:
       - "${FRONTEND_PORT:-81}:80"
+    networks:
+      - lucky-net
     restart: always
     depends_on:
       - socket-server
+
+networks:
+  lucky-net:
+    driver: bridge
 
 volumes:
   mongo_data:
