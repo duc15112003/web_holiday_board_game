@@ -3,6 +3,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const connectDB = require('./db');
+const spinRoutes = require('./routes/spinRoutes');
 
 // Import handlers
 const { registerLotoHandlers } = require('./handlers/lotoHandler');
@@ -13,6 +15,13 @@ const { registerXiangqiHandlers } = require('./handlers/xiangqiHandler');
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
+// Kết nối MongoDB
+connectDB();
+
+// API Routes
+app.use('/api', spinRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

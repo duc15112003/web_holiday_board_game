@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { mockApi } from '../mock-api/client';
+import { apiClient } from '../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { WHEEL_SEGMENTS } from '../mock-api/data';
 
@@ -24,7 +24,7 @@ export default function LuckySpin() {
 
     const loadHistory = async () => {
         try {
-            const h = await mockApi.getSpinHistory();
+            const h = await apiClient.getSpinHistory(user?.id);
             setHistory(h);
         } catch (err) {
             console.error(err);
@@ -38,9 +38,9 @@ export default function LuckySpin() {
         setShowResult(false);
 
         try {
-            // 1. Call Backend
-            const response = await mockApi.spinLuckyWheel();
-            const { reward, segmentIndex, userUpdates } = response;
+            // 1. Call Backend (MongoDB)
+            const response = await apiClient.spinWheel(user?.id, user?.username);
+            const { reward, segmentIndex } = response;
 
             // 2. Calculate Angle based on segmentIndex
             const segmentsCount = WHEEL_SEGMENTS.length;
@@ -202,7 +202,7 @@ export default function LuckySpin() {
                     ) : (
                         <ul className="space-y-3 max-h-60 overflow-y-auto">
                             {history.map((item) => (
-                                <li key={item.id} className="flex justify-between items-center text-sm p-2 hover:bg-gray-50 rounded bg-gray-50">
+                                <li key={item._id} className="flex justify-between items-center text-sm p-2 hover:bg-gray-50 rounded bg-gray-50">
                                     <span className="text-gray-600">
                                         {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
